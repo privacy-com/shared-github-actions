@@ -1,0 +1,35 @@
+name: Slack Notification
+description: "Publishes formatted message to Slack"
+
+inputs:
+  SERVICE:
+    description: 'Name of the service deployed'
+    required: true
+  ENVIRONMENT:
+    description: 'Environment being deployed too'
+    required: true
+  SLACK_WEBHOOK:
+    description: 'Slack Webhook'
+    required: true
+  COLOR:
+    description: 'Color of slack boarder'
+    required: false
+    default: '#00FF00'
+
+runs:
+  using: "composite"
+  steps:
+    - name: 'Get message'
+      id: 'deploy-message'
+      shell: bash
+      run: |
+        echo "::set-output name=commit_msg::$(git log -1 --format=%B)"
+    - name: Slack Notification
+      uses: rtCamp/action-slack-notify@v2
+      env:
+        SLACK_USERNAME: ${{ inputs.SERVICE }} ${{ inputs.ENVIRONMENT }}
+        SLACK_MESSAGE: ${{ steps.deploy-message.outputs.commit_msg }}
+        SLACK_COLOR: ${{ inputs.COLOR }}
+        SLACK_WEBHOOK: ${{ inputs.SLACK_WEBHOOK }}
+        SLACK_FOOTER: ''
+        SLACK_ICON_EMOJI: ':rocket:'
