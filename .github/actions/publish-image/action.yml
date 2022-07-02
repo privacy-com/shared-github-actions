@@ -1,0 +1,54 @@
+name: Publish Image
+description: "Publishes the image to ECR"
+
+inputs:
+  ECR_REPOSITORY:
+    description: 'ECR Repository name, generally this will be the service name'
+    required: true
+  IMAGE:
+    description: 'Built Docker image to be uploaded'
+    required: true
+  TAG:
+    description: 'Tag to give the image when uploaded to ECR'
+    required: true
+  ROLE_TO_ASSUME:
+    description: 'OIDC Role to Assume'
+    required: true
+
+outputs:
+  image:
+    description: 'ECR Image'
+    value: ${{ steps.publish-image.outputs.image }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: ${{ inputs.ROLE_TO_ASSUME }}
+        aws-region: us-west-2
+        mask-aws-account-id: 'no'
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Publish image
+      id: publish-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: ${{ inputs.ECR_REPOSITORY }}
+        IMAGE: ${{ inputs.IMAGE }}
+        TAG: ${{ inputs.TAG }}
+        DOCKER_CLI_EXPERIMENTAL: enabled
+      shell: bash
+      run: |
+        NEW_IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:$TAG
+        if docker manifest inspect $NEW_IMAGE >/dev/null; then
+          echo "Image already exists in ECR"
+        else
+          docker tag $IMAGE $NEW_IMAGE
+          docker push $NEW_IMAGE
+        fi
+        echo "::set-output name=image::$NEW_IMAGE"
