@@ -1,0 +1,46 @@
+name: Get Image
+
+on:
+  workflow_call:
+    outputs:
+      image:
+        description: "ECR Image"
+        value: ${{ jobs.get.outputs.image }}
+    inputs:
+      ECR_REPOSITORY:
+        description: 'ECR Repository name, generally this will be the service name'
+        required: true
+        type: string
+      TAG:
+        description: 'Tag to promote'
+        required: true
+        type: string
+    secrets:
+      ROLE_TO_ASSUME:
+        required: true
+
+jobs:
+  get:
+    outputs:
+      image: ${{ steps.get-image.outputs.image }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS prod credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.ROLE_TO_ASSUME }}
+          aws-region: us-west-2
+          mask-aws-account-id: 'no'
+
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Get image
+        id: get-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ inputs.ECR_REPOSITORY }}
+          TAG: ${{ inputs.TAG }}
+        run: |
+          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$TAG"
