@@ -1,0 +1,81 @@
+name: Promote Image
+
+on:
+  workflow_call:
+    outputs:
+      image:
+        description: "ECR Image"
+        value: ${{ jobs.deploy.outputs.image }}
+    inputs:
+      ECR_REPOSITORY:
+        description: 'ECR Repository name, generally this will be the service name'
+        required: true
+        type: string
+      TAG:
+        description: 'Tag to promote'
+        required: true
+        type: string
+    secrets:
+      STAGING_ROLE_TO_ASSUME:
+        required: true
+      PROD_ROLE_TO_ASSUME:
+        required: true
+
+jobs:
+  deploy:
+    outputs:
+      image: ${{ steps.publish-image.outputs.image }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Configure AWS staging credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.STAGING_ROLE_TO_ASSUME }}
+          aws-region: us-west-2
+          mask-aws-account-id: 'no'
+
+      - name: Login to Amazon ECR
+        id: login-staging-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Pull image
+        id: pull-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-staging-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ inputs.ECR_REPOSITORY }}
+          TAG: ${{ inputs.TAG }}
+        shell: bash
+        run: |
+          docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$TAG
+          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$TAG"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.PROD_ROLE_TO_ASSUME }}
+          aws-region: us-west-2
+          mask-aws-account-id: 'no'
+
+      - name: Login to Amazon ECR
+        id: login-prod-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Publish image
+        id: publish-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-prod-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ inputs.ECR_REPOSITORY }}
+          TAG: ${{ inputs.tag }}
+          IMAGE: ${{ steps.pull-image.outputs.image }}
+          DOCKER_CLI_EXPERIMENTAL: enabled
+        shell: bash
+        run: |
+          NEW_IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:$TAG
+          if docker manifest inspect $NEW_IMAGE >/dev/null; then
+            echo "Image already exists in ECR"
+          else
+            docker tag $IMAGE $NEW_IMAGE
+            docker push $NEW_IMAGE
+          fi
+          echo "::set-output name=image::$NEW_IMAGE"
