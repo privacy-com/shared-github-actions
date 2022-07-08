@@ -9,7 +9,7 @@ on:
       APP_NAME:
         required: true
         type: string
-      ENVIRONMENT:
+      CLUSTER_NAME:
         required: true
         type: string
       REGION:
@@ -32,10 +32,10 @@ jobs:
 
       - name: Get task definition
         env:
-          ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
+          CLUSTER_NAME: ${{ inputs.CLUSTER_NAME }}
           APP_NAME: ${{ inputs.APP_NAME }}
         run: |
-          TASK_DEFINITION="$ENVIRONMENT-$APP_NAME-task"
+          TASK_DEFINITION="$CLUSTER_NAME-$APP_NAME-task"
           aws ecs describe-task-definition --task-definition $TASK_DEFINITION --query taskDefinition > $APP_NAME-task-definition.json
 
       - name: Update task definition
@@ -46,10 +46,10 @@ jobs:
           container-name: ${{ inputs.APP_NAME }}
           image: ${{ inputs.IMAGE }}
 
-      - name: Deploy to environment
+      - name: Deploy to cluster
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.update-task.outputs.task-definition }}
           service: ${{ inputs.APP_NAME }}
-          cluster: ${{ inputs.ENVIRONMENT }}
+          cluster: ${{ inputs.CLUSTER_NAME }}
           wait-for-service-stability: true
