@@ -1,0 +1,97 @@
+on:
+  workflow_call:
+    inputs:
+      command:
+        required: true
+        type: string
+        description: The pulumi command to run.
+      dir:
+        required: true
+        type: string
+        description: The working directory to run the command in.
+      aws-region:
+        required: false
+        default: us-west-2
+        type: string
+        description: The AWS region to use for the command.
+      stack-name:
+        required: true
+        type: string
+        description: The name of the stack to provide to the command.
+      backend-url:
+        required: true
+        type: string
+        description: The backend URL to provide to the command.
+      bake-time-seconds:
+        required: false
+        type: number
+        default: 0
+        description: An optional time to wait and make sure things are stable before considering the workflow complete.
+    secrets:
+      role-to-assume:
+        required: true
+        description: The arn of the github OIDC role to assume.
+      backend-passphrase:
+        required: true
+        description: The passphrase to use to encrypt the backend URL. This can be an empty string.
+      duplo-ssh-key:
+        required: true
+        description: |
+          The key used to download duplo from github. This can be found among the company-wide secrets in your repo.
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  run:
+    name: Pulumi Command
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Check Dependency Cache
+        uses: actions/cache@v2
+        id: cache-venv  # name for referring later
+        with:
+          path: ./${{ inputs.dir }}/venv/  # what we cache: the virtualenv
+          # The cache key depends on requirements.txt
+          key: ${{ runner.os }}-venv-${{ hashFiles('./${{ inputs.dir }}/requirements.txt') }}-${{ inputs.dir }}-${{ inputs.command }}
+          restore-keys: |
+            ${{ runner.os }}-venv-${{ hashFiles('./${{ inputs.dir }}/requirements.txt') }}-${{ inputs.dir }}-${{ inputs.command }}
+
+      # Build a virtualenv, but only if it doesn't already exist
+      - name: Install Dependencies
+        run: |
+          eval `ssh-agent -s`
+          ssh-add - <<< '${{ secrets.duplo-ssh-key }}'
+          python -m venv ./${{ inputs.dir }}/venv && . ./${{ inputs.dir }}/venv/bin/activate && pip install -r ./${{ inputs.dir }}/requirements.txt
+        if: steps.cache-venv.outputs.cache-hit != 'true'
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ inputs.aws-region }}
+          role-to-assume: ${{ secrets.role-to-assume }}
+
+      - name: Run Pulumi Command
+        uses: pulumi/actions@v3
+        with:
+          work-dir: ${{ inputs.dir }}
+          cloud-url: ${{ inputs.backend-url }}
+          stack-name: ${{ inputs.stack-name}}
+          command: ${{ inputs.command }}
+          github-token: ${{ github.token }}
+          comment-on-pr: true
+          edit-pr-comment: false
+          diff: true
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.backend-passphrase }}
+
+      - name: Bake
+        run: sleep ${{ inputs.bake-time-seconds }}
