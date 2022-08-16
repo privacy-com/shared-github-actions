@@ -119,7 +119,7 @@ jobs:
       - name: Print Notice
         run: |
           if [[ ${{ steps.changes.outputs.dir-changed }} == 'true' ]]; then
-              echo "::notice title=Pulumi Command Successful::${{ inputs.dir }}"
+              echo "::notice title=Pulumi Command Successful::${{ inputs.stack-name }}"
           else
-              echo "::notice title=Pulumi Command Skipped::${{ inputs.dir }}"
+              echo "::notice title=Pulumi Command Skipped::${{ inputs.stack-name }}"
           fi
