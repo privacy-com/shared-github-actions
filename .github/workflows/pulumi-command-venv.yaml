@@ -4,44 +4,38 @@ on:
       command:
         required: true
         type: string
-        description: The pulumi command to run.
       dir:
         required: true
         type: string
-        description: The working directory to run the command in.
-      aws-region:
-        required: false
-        default: us-west-2
-        type: string
-        description: The AWS region to use for the command.
       stack-name:
         required: true
         type: string
-        description: The name of the stack to provide to the command.
       backend-url:
         required: true
         type: string
-        description: The backend URL to provide to the command.
       bake-time-seconds:
         required: false
         type: number
         default: 0
-        description: An optional time to wait and make sure things are stable before considering the workflow complete.
+      refresh:
+        required: false
+        type: boolean
+        default: true
+        description: |
+          Whether to refresh the backend before applying the changes. Note that concurrency must be set to 1 for any
+          job using this on a given stack or you'll have lock contention. Additionally, if you
     secrets:
       role-to-assume:
         required: true
-        description: The arn of the github OIDC role to assume.
       backend-passphrase:
         required: true
-        description: The passphrase to use to encrypt the backend URL. This can be an empty string.
       duplo-ssh-key:
         required: true
-        description: |
-          The key used to download duplo from github. This can be found among the company-wide secrets in your repo.
 
 permissions:
   id-token: write
   contents: read
+  pull-requests: write
 
 jobs:
   run:
@@ -50,36 +44,60 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Get changes
+        id: changes
+        run: |
+          if [[ ${{ github.event_name }} = "pull_request" ]]; then
+            path=origin/main..HEAD
+          else
+            path=HEAD^..HEAD
+          fi
+          
+          if git diff --name-only $path | xargs dirname | grep -q ^${{ inputs.dir }}; then
+            changed=true
+          else
+            changed=false
+          fi
+          
+          echo "::set-output name=dir-changed::${changed}"
 
       - uses: actions/setup-python@v2
+        if: steps.changes.outputs.dir-changed == 'true'
         with:
           python-version: 3.9
 
       - name: Check Dependency Cache
+        if: steps.changes.outputs.dir-changed == 'true'
         uses: actions/cache@v2
         id: cache-venv  # name for referring later
         with:
           path: ./${{ inputs.dir }}/venv/  # what we cache: the virtualenv
           # The cache key depends on requirements.txt
-          key: ${{ runner.os }}-venv-${{ hashFiles('./${{ inputs.dir }}/requirements.txt') }}-${{ inputs.dir }}-${{ inputs.command }}
+          key: ${{ runner.os }}-venv-${{ hashFiles('**/requirements.txt') }}-${{ inputs.dir }}-${{ inputs.command }}
           restore-keys: |
-            ${{ runner.os }}-venv-${{ hashFiles('./${{ inputs.dir }}/requirements.txt') }}-${{ inputs.dir }}-${{ inputs.command }}
+            ${{ runner.os }}-venv-${{ hashFiles('**/requirements.txt') }}-${{ inputs.dir }}-${{ inputs.command }}
 
       # Build a virtualenv, but only if it doesn't already exist
       - name: Install Dependencies
+        if: steps.cache-venv.outputs.cache-hit != 'true' && steps.changes.outputs.dir-changed == 'true'
         run: |
           eval `ssh-agent -s`
           ssh-add - <<< '${{ secrets.duplo-ssh-key }}'
           python -m venv ./${{ inputs.dir }}/venv && . ./${{ inputs.dir }}/venv/bin/activate && pip install -r ./${{ inputs.dir }}/requirements.txt
-        if: steps.cache-venv.outputs.cache-hit != 'true'
+
 
       - name: Configure AWS Credentials
+        if: steps.changes.outputs.dir-changed == 'true'
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-region: ${{ inputs.aws-region }}
+          aws-region: us-west-2
           role-to-assume: ${{ secrets.role-to-assume }}
 
       - name: Run Pulumi Command
+        if: steps.changes.outputs.dir-changed == 'true'
         uses: pulumi/actions@v3
         with:
           work-dir: ${{ inputs.dir }}
@@ -88,10 +106,20 @@ jobs:
           command: ${{ inputs.command }}
           github-token: ${{ github.token }}
           comment-on-pr: true
-          edit-pr-comment: false
+          edit-pr-comment: true
           diff: true
+          refresh: ${{ inputs.refresh }}
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.backend-passphrase }}
 
       - name: Bake
+        if: steps.changes.outputs.dir-changed == 'true'
         run: sleep ${{ inputs.bake-time-seconds }}
+
+      - name: Print Notice
+        run: |
+          if [[ ${{ steps.changes.outputs.dir-changed }} == 'true' ]]; then
+              echo "::notice title=Pulumi Command Successful::${{ inputs.dir }}"
+          else
+              echo "::notice title=Pulumi Command Skipped::${{ inputs.dir }}"
+          fi
