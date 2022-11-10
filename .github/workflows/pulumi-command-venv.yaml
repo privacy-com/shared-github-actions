@@ -46,6 +46,15 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
+    
+      - name: Check for refresh and preview
+        if: inputs.refresh
+        id: refresh-preview-check
+        run: | 
+          if [[ ${{ inputs.command }} == *"preview"* ]]; then
+            echo "Cannot have refresh==true with a preview command!"
+            exit 1
+          fi
 
       - name: Get changes
         id: changes
