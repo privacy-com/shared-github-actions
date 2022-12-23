@@ -28,7 +28,7 @@ on:
       role-to-assume:
         required: true
       backend-passphrase:
-        required: true
+        required: false
       duplo-ssh-key:
         required: true
 
