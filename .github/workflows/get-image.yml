@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS prod credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v1-node16
         with:
           role-to-assume: ${{ secrets.ROLE_TO_ASSUME }}
           aws-region: us-west-2
@@ -47,7 +47,7 @@ jobs:
         run: |
           NEW_IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:$TAG
           if docker manifest inspect $NEW_IMAGE >/dev/null; then
-            echo "::set-output name=image::$NEW_IMAGE"
+            echo "image=$NEW_IMAGE" >> $GITHUB_OUTPUT
           else
             echo "Image does not exists in ECR"
             exit 1
