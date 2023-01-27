@@ -71,7 +71,7 @@ jobs:
             changed=false
           fi
           
-          echo "::set-output name=dir-changed::${changed}"
+          echo "dir-changed=$changed" >> $GITHUB_OUTPUT
 
       - uses: actions/setup-python@v2
         if: steps.changes.outputs.dir-changed == 'true'
@@ -100,7 +100,7 @@ jobs:
 
       - name: Configure AWS Credentials
         if: steps.changes.outputs.dir-changed == 'true'
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v1-node16
         with:
           aws-region: us-west-2
           role-to-assume: ${{ secrets.role-to-assume }}

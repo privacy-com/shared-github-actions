@@ -23,7 +23,7 @@ runs:
       id: 'deploy-message'
       shell: bash
       run: |
-        echo "::set-output name=commit_msg::$(git log -1 --format=%B)"
+        echo "commit_msg=$(git log -1 --format=%B)" >> $GITHUB_OUTPUT
     - name: Slack Notification
       uses: rtCamp/action-slack-notify@v2
       env:
