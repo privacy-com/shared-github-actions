@@ -27,7 +27,7 @@ jobs:
       image: ${{ steps.publish-image.outputs.image }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Configure AWS staging credentials
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
