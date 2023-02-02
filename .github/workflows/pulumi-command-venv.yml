@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
     
@@ -73,14 +73,14 @@ jobs:
           
           echo "dir-changed=$changed" >> $GITHUB_OUTPUT
 
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v4
         if: steps.changes.outputs.dir-changed == 'true'
         with:
           python-version: 3.9
 
       - name: Check Dependency Cache
         if: steps.changes.outputs.dir-changed == 'true'
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         id: cache-venv  # name for referring later
         with:
           path: ./${{ inputs.dir }}/venv/  # what we cache: the virtualenv
