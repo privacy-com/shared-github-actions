@@ -40,7 +40,6 @@ runs:
 
     - name: Publish image
       id: publish-image
-      if: ${{ inputs.PUSH_LATEST_TAG != 'true' }}
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: ${{ inputs.ECR_REPOSITORY }}
