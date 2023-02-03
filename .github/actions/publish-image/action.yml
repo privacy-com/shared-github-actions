@@ -14,6 +14,10 @@ inputs:
   ROLE_TO_ASSUME:
     description: 'OIDC Role to Assume'
     required: true
+  PUSH_LATEST_TAG:
+    description: 'If set to "true", will also push the `latest`` tag'
+    required: false
+    default: "false"
 
 outputs:
   image:
@@ -51,4 +55,19 @@ runs:
           docker tag $IMAGE $NEW_IMAGE
           docker push $NEW_IMAGE
         fi
+        echo "image=$NEW_IMAGE" >> $GITHUB_OUTPUT
+
+    - name: Publish image with latest tag
+      id: publish-image-with-latest-tag
+      if: ${{ inputs.PUSH_LATEST_TAG == 'true' }}
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: ${{ inputs.ECR_REPOSITORY }}
+        IMAGE: ${{ inputs.IMAGE }}
+        DOCKER_CLI_EXPERIMENTAL: enabled
+      shell: bash
+      run: |
+        NEW_IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker tag $IMAGE $NEW_IMAGE
+        docker push $NEW_IMAGE
         echo "image=$NEW_IMAGE" >> $GITHUB_OUTPUT
