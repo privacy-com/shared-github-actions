@@ -37,6 +37,15 @@ jobs:
         run: |
           TASK_DEFINITION="$CLUSTER_NAME-$APP_NAME-task"
           aws ecs describe-task-definition --task-definition $TASK_DEFINITION --query taskDefinition > $APP_NAME-task-definition.json
+          echo $(cat $APP_NAME-task-definition.json | jq 'del(
+                  .taskDefinitionArn,
+                  .requiresAttributes,
+                  .compatibilities,
+                  .revision,
+                  .status,
+                  .registeredAt,
+                  .registeredBy
+              )') > $APP_NAME-task-definition.json
 
       - name: Update task definition
         id: update-task
