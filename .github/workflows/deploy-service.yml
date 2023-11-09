@@ -15,6 +15,9 @@ on:
       REGION:
         required: true
         type: string
+      ADDITIONAL_ENVIRONMENT_VARS:
+        required: false
+        type: string
     secrets:
       ROLE_TO_ASSUME:
         required: true
@@ -54,6 +57,7 @@ jobs:
           task-definition: ${{ inputs.APP_NAME }}-task-definition.json
           container-name: ${{ inputs.APP_NAME }}
           image: ${{ inputs.IMAGE }}
+          environment-variables: ${{ inputs.ADDITIONAL_ENVIRONMENT_VARS }}
 
       - name: Deploy to cluster
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
