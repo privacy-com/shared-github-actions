@@ -100,14 +100,14 @@ jobs:
 
       - name: Configure AWS Credentials
         if: steps.changes.outputs.dir-changed == 'true'
-        uses: aws-actions/configure-aws-credentials@v1-node16
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-region: us-west-2
           role-to-assume: ${{ secrets.role-to-assume }}
 
       - name: Run Pulumi Command
         if: steps.changes.outputs.dir-changed == 'true'
-        uses: pulumi/actions@v3
+        uses: pulumi/actions@v4
         with:
           work-dir: ${{ inputs.dir }}
           cloud-url: ${{ inputs.backend-url }}
