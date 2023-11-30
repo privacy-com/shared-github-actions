@@ -6,15 +6,18 @@ inputs:
     description: 'Name of the service deployed'
     required: true
   ENVIRONMENT:
-    description: 'Environment being deployed too'
+    description: 'Environment being deployed to'
     required: true
   SLACK_WEBHOOK:
     description: 'Slack Webhook'
     required: true
   COLOR:
-    description: 'Color of slack boarder'
+    description: 'Color of slack border'
     required: false
     default: '#00FF00'
+  TAG:
+    description: 'Tag being deployed'
+    required: false
 
 runs:
   using: "composite"
@@ -24,7 +27,7 @@ runs:
       shell: bash
       run: |
         echo "commit_msg<<EOF" >> $GITHUB_OUTPUT
-        echo "$(git log -1 --format=%B)" >> $GITHUB_OUTPUT
+        echo "$(git log -1 --format=%B ${{ inputs.tag }})" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
 
     - name: Slack Notification
