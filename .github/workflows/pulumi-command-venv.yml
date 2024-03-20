@@ -43,14 +43,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-    
+
       - name: Check for refresh and preview
         if: inputs.refresh
         id: refresh-preview-check
-        run: | 
+        run: |
           if [[ ${{ inputs.command }} == *"preview"* ]]; then
             echo "Cannot have refresh==true with a preview command!"
             exit 1
@@ -64,13 +64,13 @@ jobs:
           else
             path=HEAD^..HEAD
           fi
-          
+
           if git diff --name-only $path | xargs dirname | grep -q ^${{ inputs.dir }}; then
             changed=true
           else
             changed=false
           fi
-          
+
           echo "dir-changed=$changed" >> $GITHUB_OUTPUT
 
       - uses: actions/setup-python@v4
@@ -100,7 +100,7 @@ jobs:
 
       - name: Configure AWS Credentials
         if: steps.changes.outputs.dir-changed == 'true'
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: us-west-2
           role-to-assume: ${{ secrets.role-to-assume }}
