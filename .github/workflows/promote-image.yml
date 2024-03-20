@@ -27,9 +27,9 @@ jobs:
       image: ${{ steps.publish-image.outputs.image }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Configure AWS staging credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.STAGING_ROLE_TO_ASSUME }}
           aws-region: us-west-2
@@ -37,7 +37,7 @@ jobs:
 
       - name: Login to Amazon ECR
         id: login-staging-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Pull image
         id: pull-image
@@ -51,7 +51,7 @@ jobs:
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$TAG" >> $GITHUB_OUTPUT
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.PROD_ROLE_TO_ASSUME }}
           aws-region: us-west-2
@@ -59,7 +59,7 @@ jobs:
 
       - name: Login to Amazon ECR
         id: login-prod-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Publish image
         id: publish-image
